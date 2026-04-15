@@ -1,0 +1,24 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Urchin", "Urchin.csproj", "{F1E9D54E-0C76-5BE0-B686-DB1C86E0A057}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F1E9D54E-0C76-5BE0-B686-DB1C86E0A057}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F1E9D54E-0C76-5BE0-B686-DB1C86E0A057}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F1E9D54E-0C76-5BE0-B686-DB1C86E0A057}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F1E9D54E-0C76-5BE0-B686-DB1C86E0A057}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {7A7B5088-3FF2-4C59-8952-E062298B1DE2}
+	EndGlobalSection
+EndGlobal

@@ -1,0 +1,153 @@
+@* Components/Pages/Login.razor *@
+@page "/login"
+@layout AppLayout
+@rendermode InteractiveServer
+@using Urchin.Components.Layout
+@using Microsoft.AspNetCore.Components.Authorization
+
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IJSRuntime JS
+
+<PageTitle>login // urchin</PageTitle>
+
+<div class="auth-center">
+    <div class="auth-inner">
+        <div class="auth-header">
+            <span class="auth-app">urchin</span>
+            <span class="auth-tag">// authenticate</span>
+        </div>
+
+        @if (!string.IsNullOrEmpty(ErrorMessage))
+        {
+            <div class="auth-error">// error: @ErrorMessage</div>
+        }
+
+        <form method="post" action="/api/auth/login" class="auth-form">
+            <div class="field">
+                <label for="username">username</label>
+                <div class="field-row">
+                    <span class="field-prefix">&gt;</span>
+                    <input id="username" name="username" type="text"
+                           autocomplete="username" required spellcheck="false" />
+                </div>
+            </div>
+            <div class="field">
+                <label for="password">password</label>
+                <div class="field-row">
+                    <span class="field-prefix">&gt;</span>
+                    <input id="password" name="password" type="password"
+                           autocomplete="current-password" required />
+                </div>
+            </div>
+            <div class="field-check">
+                <input id="rememberMe" name="rememberMe" type="checkbox" value="true" />
+                <label for="rememberMe">remember session</label>
+            </div>
+            <button type="submit" class="auth-submit">login --execute</button>
+        </form>
+
+        <p class="auth-link">
+            // no account? <a href="/register">register</a>
+        </p>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    private string? Error { get; set; }
+    private string? ErrorMessage => string.IsNullOrWhiteSpace(Error) ? null : Uri.UnescapeDataString(Error);
+
+    protected override async Task OnInitializedAsync()
+{
+        try{
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (authState.User.Identity?.IsAuthenticated == true)
+            Navigation.NavigateTo("/");
+            }
+            catch (Exception ex)
+        {
+        // Log error
+        Console.WriteLine($"Login page error: {ex}");
+        }
+    }
+    
+}
+
+<style>
+    /* Center the form in the flex content-area */
+    .auth-center {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+    }
+
+    .auth-inner {
+        width: 100%;
+        max-width: 340px;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+    }
+
+    .auth-header { display: flex; flex-direction: column; gap: 4px; }
+    .auth-app { font-size: 22px; font-weight: 600; color: var(--green); letter-spacing: 0.1em; }
+    .auth-tag { font-size: 11px; color: var(--text-dim); letter-spacing: 0.06em; }
+
+    .auth-error { font-size: 11px; color: #f87171; border-left: 2px solid #f87171; padding-left: 8px; }
+
+    .auth-form { display: flex; flex-direction: column; gap: 16px; }
+
+    .field { display: flex; flex-direction: column; gap: 5px; }
+
+    .field label { font-size: 10px; color: var(--text-dim); letter-spacing: 0.1em; text-transform: uppercase; }
+
+    .field-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        border: 1px solid var(--border);
+        background: #0a0a0a;
+        padding: 0 8px;
+        transition: border-color .15s;
+    }
+
+    .field-row:focus-within { border-color: #444; }
+    .field-prefix { color: var(--green); font-weight: 600; user-select: none; flex-shrink: 0; }
+
+    .field-row input {
+        flex: 1;
+        background: none;
+        border: none;
+        outline: none;
+        color: var(--text);
+        font-family: var(--font);
+        font-size: 13px;
+        padding: 7px 0;
+    }
+
+    .field-row input::placeholder { color: var(--text-mute); }
+
+    .field-check { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-dim); }
+    .field-check input[type="checkbox"] { accent-color: var(--green); width: 12px; height: 12px; }
+
+    .auth-submit {
+        background: none;
+        border: 1px solid var(--green);
+        color: var(--green);
+        font-family: var(--font);
+        font-size: 12px;
+        padding: 8px 0;
+        cursor: pointer;
+        letter-spacing: 0.08em;
+        transition: background .15s, color .15s;
+        margin-top: 4px;
+    }
+
+    .auth-submit:hover { background: var(--green); color: #000; }
+    .auth-link { font-size: 11px; color: var(--text-dim); }
+    .auth-link a { color: var(--green); text-decoration: none; }
+    .auth-link a:hover { text-decoration: underline; }
+</style>

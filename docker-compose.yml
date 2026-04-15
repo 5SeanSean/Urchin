@@ -1,0 +1,33 @@
+services:
+  blazor-urchin:
+    build: .
+    ports:
+      - "5000:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=${SUPABASE_CONNECTION_STRING}
+      - Ollama__BaseUrl=http://host.docker.internal:11434
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./logs:/app/logs
+      - ./keys:/root/.aspnet/DataProtection-Keys
+    restart: unless-stopped
+    networks:
+      - urchin-net
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate run --token ${CF_TUNNEL_TOKEN}
+    environment:
+      - TUNNEL_TOKEN=${CF_TUNNEL_TOKEN}
+    restart: unless-stopped
+    depends_on:
+      - blazor-urchin
+    networks:
+      - urchin-net
+
+networks:
+  urchin-net:
+    driver: bridge

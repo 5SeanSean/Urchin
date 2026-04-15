@@ -1,0 +1,153 @@
+@* Components\Pages\Settings.razor *@
+@page "/settings"
+@layout AppLayout
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
+@inject HttpClient Http
+
+<PageTitle>settings // urchin</PageTitle>
+
+<div class="settings-container">
+    <h2 class="settings-header">// account settings</h2>
+    <div class="danger-zone">
+        <h3 class="danger-title">delete account</h3>
+        <p class="danger-text">This will permanently delete all your conversations and data.</p>
+        <button class="delete-btn" @onclick="ShowConfirm">delete account --force</button>
+    </div>
+</div>
+
+@if (showConfirm)
+{
+    <div class="modal-overlay" @onclick="HideConfirm">
+        <div class="modal" @onclick:stopPropagation>
+            <p class="modal-text">Are you absolutely sure?</p>
+            <p class="modal-warning">This action cannot be undone.</p>
+            <div class="modal-actions">
+                <button class="cancel-btn" @onclick="HideConfirm">cancel</button>
+                <button class="confirm-delete-btn" @onclick="DeleteAccount">yes, delete everything</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool showConfirm = false;
+
+    private void ShowConfirm() => showConfirm = true;
+    private void HideConfirm() => showConfirm = false;
+
+private async Task DeleteAccount()
+{
+    await Http.DeleteAsync("/api/account");
+    Navigation.NavigateTo("/login", true);
+}
+}
+
+<style>
+    .settings-container {
+        max-width: 600px;
+        margin: 0 auto;
+    }
+    .settings-header {
+        font-size: 18px;
+        font-weight: 400;
+        color: var(--text);
+        margin-bottom: 30px;
+        letter-spacing: -0.02em;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 8px;
+    }
+    .danger-zone {
+        border: 1px solid #f87171;
+        padding: 1.5rem;
+        border-radius: 4px;
+        background: rgba(248, 113, 113, 0.05);
+    }
+    .danger-title {
+        font-size: 14px;
+        font-weight: 500;
+        color: #f87171;
+        margin-top: 0;
+        margin-bottom: 8px;
+    }
+    .danger-text {
+        font-size: 12px;
+        color: var(--text-dim);
+        margin-bottom: 16px;
+    }
+    .delete-btn {
+        background: none;
+        border: 1px solid #f87171;
+        color: #f87171;
+        padding: 6px 14px;
+        font-family: var(--font);
+        font-size: 11px;
+        cursor: pointer;
+        transition: background 0.15s, color 0.15s;
+    }
+    .delete-btn:hover {
+        background: #f87171;
+        color: #0d0d0d;
+    }
+
+    /* Modal styling */
+    .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+    .modal {
+        background: #111;
+        border: 1px solid #333;
+        padding: 2rem;
+        max-width: 400px;
+        width: 90%;
+    }
+    .modal-text {
+        font-size: 16px;
+        margin-bottom: 8px;
+    }
+    .modal-warning {
+        color: #f87171;
+        font-size: 13px;
+        margin-bottom: 24px;
+    }
+    .modal-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: flex-end;
+    }
+    .cancel-btn {
+        background: none;
+        border: 1px solid var(--border);
+        color: var(--text-dim);
+        padding: 6px 16px;
+        font-family: var(--font);
+        font-size: 11px;
+        cursor: pointer;
+    }
+    .cancel-btn:hover {
+        color: var(--text);
+        border-color: var(--text-dim);
+    }
+    .confirm-delete-btn {
+        background: #f87171;
+        border: none;
+        color: #0d0d0d;
+        padding: 6px 16px;
+        font-family: var(--font);
+        font-size: 11px;
+        font-weight: 500;
+        cursor: pointer;
+    }
+    .confirm-delete-btn:hover {
+        background: #ef4444;
+    }
+</style>

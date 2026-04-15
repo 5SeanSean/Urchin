@@ -1,0 +1,35 @@
+@namespace Urchin.Components.Layout
+
+@inherits LayoutComponentBase
+@using Microsoft.AspNetCore.Components.Authorization
+@inject NavigationManager Navigation
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<div class="shell">
+    <Sidebar />
+    <main class="main">
+        <header class="topbar">
+            <AuthorizeView>
+                <Authorized>
+                    <nav class="topbar-nav">
+                        <a href="/settings" class="topbar-link">settings</a>
+                        <span class="topbar-sep">·</span>
+                        <span class="topbar-link topbar-user">@context.User.Identity?.Name</span>
+                        <span class="topbar-sep">·</span>
+                        <form method="post" action="/api/auth/logout" class="topbar-logout-form">
+                            <button type="submit" class="topbar-link topbar-btn">logout</button>
+                        </form>
+                    </nav>
+                </Authorized>
+            </AuthorizeView>
+        </header>
+        <div class="content-area">
+            @Body
+        </div>
+    </main>
+</div>
+
+@code { }

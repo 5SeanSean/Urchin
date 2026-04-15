@@ -1,0 +1,48 @@
+# Build outputs
+bin/
+obj/
+*.user
+*.userprefs
+*.lock.json
+
+# Logs
+logs/
+*.log
+
+# Sensitive configuration
+appsettings.Production.json
+appsettings.*.local.json
+*.local.json
+
+# Docker secrets
+keys/
+cloudflared/config.yml
+letsencrypt/
+*.env
+.env.*
+!.env.example
+
+# Data protection keys
+**/.aspnet/DataProtection-Keys/
+**/keys/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# User-specific files
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Published output
+/publish/
+/out/
+
+

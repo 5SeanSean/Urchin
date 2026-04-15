@@ -1,0 +1,155 @@
+@* Components\Shared\Sidebar.razor *@
+@namespace Urchin.Components.Shared
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Urchin.Models
+@using Urchin.Services
+@rendermode InteractiveServer
+@inject IChatService ChatService
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthStateProvider
+@inject AppState AppState
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<aside class="sidebar">
+    <!-- Top: App Title + New Conversation button -->
+    <div class="sidebar-top">
+        <span class="app-name">urchin</span>
+        @if (!string.IsNullOrEmpty(currentUserId))
+        {
+            <button class="new-btn" @onclick="StartNewConversation" disabled="@isStreaming" title="new conversation">+</button>
+        }
+    </div>
+
+    <!-- Middle: Scrollable content (TaskList when logged out, Conversation list when logged in) -->
+    <div class="sidebar-middle">
+        @if (string.IsNullOrEmpty(currentUserId))
+        {
+            <TaskList />
+        }
+        else
+        {
+            <div class="conv-list">
+                @foreach (var conv in conversations)
+                {
+                    <div class="conv-row @(conv.Id == activeConversationId ? "active" : "")">
+                        <button class="conv-item" @onclick="() => SelectConversation(conv.Id)" disabled="@isStreaming">
+                            <span class="conv-title">@conv.Title</span>
+                            <span class="conv-date">@conv.CreatedAt.ToLocalTime().ToString("MM/dd")</span>
+                        </button>
+                        <button class="conv-delete" @onclick="() => DeleteConversation(conv.Id)" disabled="@isStreaming" title="delete">✕</button>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    <!-- Bottom: Urchin (fills panel, eyes centered) -->
+    <div class="sidebar-bottom">
+        <div class="urchin-character" id="urchin-wrapper" @onclick="WiggleUrchin">
+            <img src="/images/urchin.png" alt="urchin" class="urchin-img" />
+            <!-- viewBox="0 0 100 100": (50,50) is the dead-centre of sidebar-bottom -->
+            <svg class="eyes-svg" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+                <g>
+                    <circle class="urchin-eye-white" cx="38" cy="50" r="6" fill="white" />
+                    <circle class="urchin-pupil"     cx="38" cy="50" r="3" fill="#00ff00" />
+                </g>
+                <g>
+                    <circle class="urchin-eye-white" cx="62" cy="50" r="6" fill="white" />
+                    <circle class="urchin-pupil"     cx="62" cy="50" r="3" fill="#00ff00" />
+                </g>
+            </svg>
+        </div>
+    </div>
+</aside>
+
+@code {
+    private string currentUserId = "";
+    private List<Conversation> conversations = new();
+    private int activeConversationId;
+    private bool isStreaming;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        currentUserId = UserManager.GetUserId(authState.User) ?? "";
+        Console.WriteLine($"Sidebar user ID: '{currentUserId}'");
+        if (!string.IsNullOrEmpty(currentUserId))
+            await LoadConversations();
+        AppState.OnConversationsChanged += OnConversationsChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await JS.InvokeVoidAsync("urchinHelpers.initEyes");
+    }
+
+    private async void OnConversationsChanged()
+    {
+        await LoadConversations();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadConversations()
+    {
+        conversations = await ChatService.GetConversationsAsync(currentUserId);
+    }
+
+    private Task SelectConversation(int id)
+    {
+        activeConversationId = id;
+        Navigation.NavigateTo($"/?conversation={id}");
+        return Task.CompletedTask;
+    }
+
+    private async Task StartNewConversation()
+    {
+        try
+        {
+            Console.WriteLine($"Creating conversation for user: {currentUserId}");
+            var conv = await ChatService.CreateConversationAsync(currentUserId, "new conversation");
+            Console.WriteLine($"Created conversation Id={conv.Id}");
+            conversations.Insert(0, conv);
+            await LoadConversations(); // refresh the list
+            Navigation.NavigateTo($"/?conversation={conv.Id}", forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error creating conversation: {ex.Message}");
+            // Show an alert to the user (temporary debug)
+            await JS.InvokeVoidAsync("alert", $"Error: {ex.Message}");
+        }
+    }
+    private async Task DeleteConversation(int id)
+    {
+        await ChatService.DeleteConversationAsync(id, currentUserId);
+        conversations.RemoveAll(c => c.Id == id);
+        if (activeConversationId == id)
+        {
+            activeConversationId = 0;
+            Navigation.NavigateTo("/");
+        }
+        StateHasChanged();
+    }
+
+    private async Task WiggleUrchin()
+    {
+        await JS.InvokeVoidAsync("urchinHelpers.wiggleOnce", "urchin-wrapper");
+    }
+
+    public void SetStreaming(bool streaming)
+    {
+        isStreaming = streaming;
+        StateHasChanged();
+    }
+
+    public int GetActiveConversationId() => activeConversationId;
+
+    public void Dispose()
+    {
+        AppState.OnConversationsChanged -= OnConversationsChanged;
+    }
+}

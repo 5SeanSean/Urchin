@@ -1,0 +1,319 @@
+@* Components\Pages\Chat.razor *@
+@page "/"
+@layout AppLayout
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@attribute [Authorize]
+@using Markdig
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Urchin.Models
+@using Urchin.Services
+@using Urchin.Components.Layout
+@inject IChatService ChatService
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
+
+<PageTitle>urchin</PageTitle>
+
+@if (activeConversationId == 0)
+{
+    <div class="empty-state">
+        <pre class="empty-pre">
+  _   _ ____   ____ _   _ ___ _   _
+ | | | |  _ \ / ___| | | |_ _| \ | |
+ | | | | |_) | |   | |_| || ||  \| |
+ | |_| |  _ &lt;| |___|  _  || || |\  |
+  \___/|_| \_\\____|_| |_|___|_| \_|</pre>
+        <p class="empty-hint">// press <kbd>+</kbd> to start a new conversation</p>
+    </div>
+}
+else
+{
+    <div class="chat-shell">
+        <div class="thread" id="message-thread">
+            @foreach (var msg in messages)
+            {
+                <div class="msg @(msg.Role == "user" ? "msg-user" : "msg-assistant")">
+                    <span class="msg-prefix">@(msg.Role == "user" ? "> " : "$ ")</span>
+                    <div class="msg-body">
+                        @if (msg.Role == "assistant")
+                        {
+                            @((MarkupString)RenderMarkdown(msg.Content))
+                        }
+                        else
+                        {
+                            <span>@msg.Content</span>
+                        }
+                    </div>
+                </div>
+            }
+
+            @if (isStreaming && streamingMessage.Length == 0)
+            {
+                <div class="msg msg-assistant">
+                    <span class="msg-prefix">$ </span>
+                    <div class="msg-body"><span class="cursor-blink">▋</span></div>
+                </div>
+            }
+        </div>
+
+        <div class="input-area">
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="error-bar">// error: @errorMessage</div>
+            }
+            <div class="input-row">
+                <span class="input-prefix">&gt;</span>
+                <textarea class="input-box"
+                          rows="1"
+                          placeholder="type a message..."
+                          @bind="userInput"
+                          @bind:event="oninput"
+                          @onkeydown="HandleKeyDown"
+                          disabled="@isStreaming">
+                </textarea>
+                <button class="send-btn" @onclick="SendMessage"
+                        disabled="@(isStreaming || string.IsNullOrWhiteSpace(userInput))">
+                    @if (isStreaming) { <span class="spinner">...</span> }
+                    else { <span>enter</span> }
+                </button>
+            </div>
+            <p class="input-hint">// enter to send &nbsp;·&nbsp; shift+enter for newline</p>
+        </div>
+    </div>
+}
+
+@code {
+    private string currentUserId = "";
+    private List<Message> messages = new();
+    private int activeConversationId = 0;
+    private string userInput = "";
+    private bool isStreaming = false;
+    private System.Text.StringBuilder streamingMessage = new();
+    private string errorMessage = "";
+
+    private static readonly MarkdownPipeline MarkdownPipeline =
+        new MarkdownPipelineBuilder().UseAdvancedExtensions().Build();
+
+    [SupplyParameterFromQuery(Name = "conversation")]
+    public int? ConversationIdFromQuery { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        currentUserId = UserManager.GetUserId(authState.User) ?? "";
+        if (string.IsNullOrEmpty(currentUserId)) return;
+
+        if (ConversationIdFromQuery.HasValue)
+        {
+            activeConversationId = ConversationIdFromQuery.Value;
+            messages = await ChatService.GetChatHistoryAsync(activeConversationId);
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (ConversationIdFromQuery.HasValue && ConversationIdFromQuery.Value != activeConversationId)
+        {
+            activeConversationId = ConversationIdFromQuery.Value;
+            messages = await ChatService.GetChatHistoryAsync(activeConversationId);
+            StateHasChanged();
+            await ScrollToBottom();
+        }
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+            await SendMessage();
+    }
+
+    private async Task SendMessage()
+    {
+        var text = userInput.Trim();
+        if (string.IsNullOrEmpty(text) || isStreaming) return;
+
+        userInput = "";
+        errorMessage = "";
+        isStreaming = true;
+        streamingMessage.Clear();
+
+        messages.Add(new Message { Role = "user", Content = text, Timestamp = DateTime.UtcNow });
+        await ScrollToBottom();
+
+        var assistantMsg = new Message { Role = "assistant", Content = "", Timestamp = DateTime.UtcNow };
+        messages.Add(assistantMsg);
+
+        await JS.InvokeVoidAsync("urchinHelpers.startWiggle", "urchin-wrapper");
+
+        try
+        {
+            await foreach (var token in ChatService.GenerateResponseAsync(activeConversationId, text, currentUserId))
+            {
+                streamingMessage.Append(token);
+                assistantMsg.Content = streamingMessage.ToString();
+                await InvokeAsync(StateHasChanged);
+                await ScrollToBottom();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+            messages.Remove(assistantMsg);
+        }
+        finally
+        {
+            isStreaming = false;
+            streamingMessage.Clear();
+            await JS.InvokeVoidAsync("urchinHelpers.stopWiggle", "urchin-wrapper");
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task ScrollToBottom()
+    {
+        try { await JS.InvokeVoidAsync("urchinHelpers.scrollToBottom", "message-thread"); }
+        catch { }
+    }
+
+    private static string RenderMarkdown(string content) =>
+        Markdown.ToHtml(content, MarkdownPipeline);
+}
+
+<style>
+    /* ── Empty state ─────────────────────────────────────────────── */
+    .empty-state {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+    }
+    .empty-pre {
+        color: var(--green);
+        font-size: 11px;
+        line-height: 1.4;
+        opacity: 0.5;
+        white-space: pre;
+        font-family: var(--font);
+    }
+    .empty-hint { font-size: 11px; color: var(--text-mute); }
+    .empty-hint kbd {
+        background: var(--bg-hover);
+        border: 1px solid var(--border);
+        padding: 1px 5px;
+        font-family: var(--font);
+        font-size: 11px;
+        color: var(--text-dim);
+    }
+
+    /* ── Chat shell: fills the content-area flex column ─────────── */
+    .chat-shell {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        min-height: 0;
+    }
+
+    /* ── Thread: scrollable message list ────────────────────────── */
+    .thread {
+        flex: 1;
+        overflow-y: auto;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        padding: 20px 24px;
+        scrollbar-width: thin;
+        scrollbar-color: var(--border) transparent;
+    }
+
+    /* ── Messages ────────────────────────────────────────────────── */
+    .msg { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; line-height: 1.6; }
+    .msg-prefix { flex-shrink: 0; font-weight: 600; user-select: none; padding-top: 1px; }
+    .msg-user .msg-prefix { color: var(--green); }
+    .msg-assistant .msg-prefix { color: var(--text-dim); }
+    .msg-body { flex: 1; color: var(--text); min-width: 0; }
+    .msg-user .msg-body { color: #ffffff; }
+    .msg-body p { margin-bottom: .6em; }
+    .msg-body p:last-child { margin-bottom: 0; }
+    .msg-body pre {
+        background: #161616;
+        border: 1px solid var(--border);
+        padding: 10px 14px;
+        overflow-x: auto;
+        font-size: 12px;
+        line-height: 1.5;
+        margin: .5em 0;
+        font-family: var(--font);
+    }
+    .msg-body code {
+        background: #161616;
+        border: 1px solid var(--border);
+        padding: 1px 4px;
+        font-size: .9em;
+        font-family: var(--font);
+    }
+    .msg-body pre code { background: none; border: none; padding: 0; }
+    .msg-body ul, .msg-body ol { padding-left: 1.4em; margin: .4em 0; }
+    .cursor-blink { animation: blink .8s step-end infinite; color: var(--green); }
+    @@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+    /* ── Input area: pinned to bottom ───────────────────────────── */
+    .input-area {
+        flex-shrink: 0;
+        padding: 12px 24px 16px;
+        border-top: 1px solid var(--border);
+    }
+    .error-bar {
+        font-size: 11px;
+        color: #f87171;
+        border-left: 2px solid #f87171;
+        padding-left: 8px;
+        margin-bottom: 8px;
+    }
+    .input-row { display: flex; align-items: flex-end; gap: 8px; }
+    .input-prefix { color: var(--green); font-size: 14px; font-weight: 600; padding-bottom: 7px; flex-shrink: 0; user-select: none; }
+    .input-box {
+        flex: 1;
+        background: #0d0d0d;
+        border: 1px solid var(--border);
+        color: var(--text);
+        font-family: var(--font);
+        font-size: 13px;
+        line-height: 1.5;
+        padding: 6px 10px;
+        resize: none;
+        outline: none;
+        max-height: 140px;
+        overflow-y: auto;
+        transition: border-color .15s;
+        scrollbar-width: thin;
+    }
+    .input-box:focus { border-color: var(--text-mute); }
+    .input-box::placeholder { color: var(--text-mute); }
+    .input-box:disabled { opacity: 0.4; }
+    .send-btn {
+        background: none;
+        border: 1px solid var(--border);
+        color: var(--text-dim);
+        font-family: var(--font);
+        font-size: 11px;
+        padding: 5px 10px;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: color .15s, border-color .15s;
+        height: 32px;
+        letter-spacing: 0.05em;
+    }
+    .send-btn:hover:not(:disabled) { color: var(--text); border-color: var(--text-dim); }
+    .send-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .spinner { animation: pulse 1s ease-in-out infinite; }
+    @@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+    .input-hint { font-size: 10px; color: var(--text-mute); margin-top: 5px; letter-spacing: 0.03em; }
+</style>

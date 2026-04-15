@@ -1,0 +1,133 @@
+@* Components\Shared\TaskList.razor *@
+@namespace Urchin.Components.Shared
+
+<div class="tasklist">
+    <div class="task-inner">
+        @* List rendered twice — seamless loop: animate translateY(0) → translateY(-50%) *@
+        @foreach (var pass in Enumerable.Range(0, 2))
+        {
+            @foreach (var task in _tasks)
+            {
+                <div class="task-row">
+                    <span class="task-badge task-@task.Status">@task.StatusLabel</span>
+                    <span class="task-text">@task.Text</span>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    private record TaskItem(string StatusLabel, string Status, string Text);
+
+    private static readonly List<TaskItem> _tasks = new()
+    {
+        new("[RUN] ", "run",  "interpolating 14TB AVISO altimetry onto 1/12° global grid"),
+        new("[ERR] ", "err",  "ROMS-BEC crashed: negative nitrate at grid cell (143,89,12)"),
+        new("[DONE]", "done", "CTD cast #112: SBE-911 calibration coefficients committed"),
+        new("[WARN]", "warn", "ARGO float 5902743 silent 19 days — position now extrapolated"),
+        new("[RUN] ", "run",  "running GOTM k-ε turbulence closure — not converging at Ri > 0.25"),
+        new("[DONE]", "done", "tidal forcing reprocessed: M2 amplitude error reduced to 0.4 cm"),
+        new("[ERR] ", "err",  "multibeam sonar threw SIGABRT — heap corruption in ping processor"),
+        new("[RUN] ", "run",  "validating ADCP profiles against shipboard LADCP (bias: +0.03 m/s)"),
+        new("[WARN]", "warn", "salinity sensor drift: +0.08 PSU/hr — recalibrating against CTD ref"),
+        new("[DONE]", "done", "sediment flux model converged after 14 iterations (tol = 1e-6)"),
+        new("[RUN] ", "run",  "acoustic Doppler desync — realigning to 38.4 kHz master clock"),
+        new("[ERR] ", "err",  "SSH into abyssal lander node failed: remote host key changed"),
+        new("[DONE]", "done", "oxygen minimum zone sensor array: all 8 nodes re-provisioned"),
+        new("[WARN]", "warn", "internal wave drag term diverging below 3,000 m — capping at 1e-4"),
+        new("[RUN] ", "run",  "Iridium burst window open: flushing 47 queued mooring packets"),
+        new("[DONE]", "done", "thermocline regression retrained: RMSE 4.7 m → 2.1 m"),
+        new("[ERR] ", "err",  "ROV thruster 3 & 6 overcurrent at 800 m — throttled to 60%"),
+        new("[RUN] ", "run",  "applying DMQC-2024 delayed-mode QC to 3,200 ARGO profiles"),
+        new("[WARN]", "warn", "CTD cast #47: SBE-911 depth channel frozen at 214.3 dbar"),
+        new("[DONE]", "done", "sea floor pressure gauge offset corrected: −0.22 dbar applied"),
+        new("[RUN] ", "run",  "adaptive mesh refinement on continental shelf bathymetry — pass 3/5"),
+        new("[ERR] ", "err",  "deep-sea cable segment 12: CRC mismatch on 1,840 of 2,048 frames"),
+        new("[DONE]", "done", "bioluminescence emission calibration: δ = 0.003 nm — within spec"),
+        new("[WARN]", "warn", "hydrothermal vent temp sensor returning NaN — clamped to 407°C"),
+        new("[RUN] ", "run",  "satellite chlorophyll retrieval: re-masking clouds (78% rejection)"),
+        new("[DONE]", "done", "MODIS SST composite: striping corrected in 2 corrupted pass files"),
+        new("[ERR] ", "err",  "biogeochemical model: phosphate flux at open boundary went negative"),
+        new("[RUN] ", "run",  "spinning up ensemble of 32 ocean reanalysis hindcast members"),
+        new("[WARN]", "warn", "CTD packet loss 14% below 2,400 m — switching to 1200 baud backup"),
+        new("[DONE]", "done", "MBARI AUV waypoint planner recompiled: segfault at line 2847 fixed"),
+        new("[RUN] ", "run",  "reprocessing abyssal mixing: Klymak-Legg parameterization enabled"),
+        new("[ERR] ", "err",  "pressure vessel alarm on ROV Nereid: hull integrity sensor offline"),
+        new("[DONE]", "done", "sediment trap sample 2024-11 rerun: blank contamination cleared"),
+        new("[RUN] ", "run",  "assimilating Sentinel-6 SSH anomaly into forecast model (cycle 88)"),
+        new("[WARN]", "warn", "oceanographic model diverged at t=72 hr — reducing timestep to 30 s"),
+        new("[DONE]", "done", "kraken /api/v2/stats endpoint migrated to gRPC — latency −40 ms"),
+        new("[ERR] ", "err",  "kelp CDN returned 503: 12 downstream sonar nodes unreachable"),
+        new("[RUN] ", "run",  "cross-calibrating HF radar surface currents with drifter tracks"),
+        new("[WARN]", "warn", "mixed layer depth algorithm returning depths > bathymetry at 4 nodes"),
+        new("[DONE]", "done", "eel power output benchmark: 860 µW peak — copper wire remains faster"),
+        new("[RUN] ", "run",  "deconvolving CTD thermal lag on fast-profiling float at 2 m/s"),
+        new("[ERR] ", "err",  "oxygen sensor on mooring M07 stuck at 0 µmol/kg since 2024-11-03"),
+        new("[DONE]", "done", "NEMO grid nesting: child domain lateral boundary conditions verified"),
+        new("[WARN]", "warn", "harmonic tidal analysis: S2 constituent poorly resolved — 29-day record"),
+        new("[RUN] ", "run",  "downscaling ERA5 wind stress onto 1 km coastal model domain"),
+        new("[DONE]", "done", "bottom boundary layer turbulence log flushed: 1.2 GB archived"),
+        new("[ERR] ", "err",  "float 6901254 surfaced in wrong hemisphere — QC flag set to 4"),
+        new("[RUN] ", "run",  "computing eddy kinetic energy budget from 25-year altimetry record"),
+        new("[WARN]", "warn", "Iridium link congested: 6-hr backlog of float profiles queued"),
+        new("[DONE]", "done", "post-cruise LADCP reprocessing complete: 94 casts, 0 rejected"),
+    };
+}
+
+<style>
+    /* Outer mask container — clips overflow and fades edges */
+    .tasklist {
+        height: 100%;
+        overflow: hidden;
+        position: relative;
+        -webkit-mask-image: linear-gradient(to bottom, transparent, black 12%, black 88%, transparent);
+        mask-image:         linear-gradient(to bottom, transparent, black 12%, black 88%, transparent);
+        user-select: none;
+        pointer-events: none;  /* not user-scrollable */
+    }
+
+    /* Inner wrapper — animated, contains the list twice for seamless loop */
+    .task-inner {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: 8px;
+        /* -50%: one full list height, which is exactly where the duplicate begins */
+        animation: scroll-up 90s linear infinite;
+    }
+
+    @@keyframes scroll-up {
+        from { transform: translateY(0); }
+        to   { transform: translateY(-50%); }
+    }
+
+    .task-row {
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+        padding: 6px 12px;
+        border-bottom: 1px solid rgba(0, 255, 0, 0.08);
+        font-size: 0.75rem;
+    }
+
+    .task-badge {
+        font-family: monospace;
+        font-weight: bold;
+        flex-shrink: 0;
+        width: 55px;
+        color: #00ff00;
+    }
+
+    .task-done { color: #00ff00; }
+    .task-run  { color: #00ff00; }
+    .task-warn { color: #00ff00; }
+    .task-err  { color: #00ff00; }
+
+    .task-text {
+        color: #00ff00;
+        opacity: 0.8;
+        line-height: 1.35;
+        word-break: break-word;
+    }
+</style>
